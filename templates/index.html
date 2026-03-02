@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tradutor DOCX AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding-top: 50px;
+        }
+        .container {
+            max_width: 800px;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        }
+        .progress {
+            height: 25px;
+            margin-top: 20px;
+            display: none;
+        }
+        #status-area {
+            margin-top: 20px;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1 class="text-center mb-4">Tradutor de Documentos (DOCX)</h1>
+    <p class="text-center text-muted">Tradução inteligente preservando a formatação.</p>
+
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <form id="upload-form" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label for="file" class="form-label">Selecione o arquivo (.docx)</label>
+                    <input class="form-control" type="file" id="file" name="file" accept=".docx" required>
+                </div>
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary" id="btn-upload">Iniciar Tradução</button>
+                </div>
+            </form>
+
+            <div id="progress-container" class="progress">
+                <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%">0%</div>
+            </div>
+
+            <div id="status-area" class="text-center">
+                <p id="status-text" class="text-muted"></p>
+                <a id="download-btn" href="#" class="btn btn-success hidden">Baixar Arquivo Traduzido</a>
+                <button id="new-btn" class="btn btn-secondary hidden" onclick="resetTask()">Traduzir Outro</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Check for existing task on load
+    window.addEventListener('load', () => {
+        const savedTaskId = localStorage.getItem('currentTaskId');
+        if (savedTaskId) {
+            restoreTaskState(savedTaskId);
+        }
+    });
+
+    document.getElementById('upload-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const fileInput = document.getElementById('file');
+        if (!fileInput.files.length) {
+            alert('Por favor, selecione um arquivo.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+
+        // UI Updates
+        const btnUpload = document.getElementById('btn-upload');
+        const progressBar = document.getElementById('progress-bar');
+        const progressContainer = document.getElementById('progress-container');
+        const statusText = document.getElementById('status-text');
+        
+        btnUpload.disabled = true;
+        btnUpload.textContent = 'Enviando...';
+        statusText.textContent = 'Enviando arquivo...';
+        progressContainer.style.display = 'flex';
+        progressBar.style.width = '0%';
+        progressBar.textContent = '0%';
+        statusText.classList.remove('text-danger', 'text-success');
+
+        try {
+            const response = await fetch('/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Erro no upload');
+            }
+
+            const data = await response.json();
+            const taskId = data.task_id;
+            
+            // Save to localStorage
+            localStorage.setItem('currentTaskId', taskId);
+            
+            btnUpload.textContent = 'Traduzindo...';
+            startPolling(taskId);
+
+        } catch (error) {
+            console.error(error);
+            statusText.textContent = 'Erro: ' + error.message;
+            statusText.classList.add('text-danger');
+            btnUpload.disabled = false;
+            btnUpload.textContent = 'Tentar Novamente';
+        }
+    });
+
+    function restoreTaskState(taskId) {
+        const btnUpload = document.getElementById('btn-upload');
+        const progressContainer = document.getElementById('progress-container');
+        const statusText = document.getElementById('status-text');
+        
+        btnUpload.disabled = true;
+        btnUpload.textContent = 'Traduzindo...';
+        progressContainer.style.display = 'flex';
+        statusText.textContent = 'Recuperando status...';
+        
+        startPolling(taskId);
+    }
+
+    function resetTask() {
+        localStorage.removeItem('currentTaskId');
+        location.reload();
+    }
+
+
+    function startPolling(taskId) {
+        const progressBar = document.getElementById('progress-bar');
+        const statusText = document.getElementById('status-text');
+        const downloadBtn = document.getElementById('download-btn');
+        const newBtn = document.getElementById('new-btn');
+        const btnUpload = document.getElementById('btn-upload');
+
+        const interval = setInterval(async () => {
+            try {
+                const response = await fetch(`/status/${taskId}`);
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        clearInterval(interval);
+                        localStorage.removeItem('currentTaskId');
+                        statusText.textContent = 'Tarefa não encontrada. Por favor, inicie novamente.';
+                        statusText.classList.add('text-danger');
+                        btnUpload.disabled = false;
+                        btnUpload.textContent = 'Iniciar Tradução';
+                        return;
+                    }
+                    throw new Error('Erro ao verificar status');
+                }
+
+                const task = await response.json();
+
+                // Update Progress
+                const percentage = task.percentage || 0;
+                progressBar.style.width = `${percentage}%`;
+                progressBar.textContent = `${percentage}%`;
+                statusText.textContent = task.status;
+
+                if (task.completed) {
+                    clearInterval(interval);
+                    statusText.textContent = 'Tradução Concluída!';
+                    statusText.classList.add('text-success');
+                    
+                    downloadBtn.href = task.download_url;
+                    downloadBtn.classList.remove('hidden');
+                    newBtn.classList.remove('hidden');
+                    btnUpload.classList.add('hidden'); // Hide upload button
+                } else if (task.error) {
+                    clearInterval(interval);
+                    statusText.textContent = 'Erro: ' + task.status;
+                    statusText.classList.add('text-danger');
+                    btnUpload.disabled = false;
+                    btnUpload.textContent = 'Tentar Novamente';
+                }
+
+            } catch (error) {
+                console.error(error);
+                clearInterval(interval);
+                statusText.textContent = 'Erro de conexão com o servidor.';
+            }
+        }, 1000); // Poll every 1 second
+    }
+</script>
+
+</body>
+</html>

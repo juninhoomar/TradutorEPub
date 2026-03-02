@@ -1,0 +1,26 @@
+{
+    "08bf945f-6672-4c6b-918c-fe31573c0136": {
+        "id": "08bf945f-6672-4c6b-918c-fe31573c0136",
+        "original_filename": "MANUAL.docx",
+        "status": "Erro: Processamento interrompido pelo servidor",
+        "percentage": 0,
+        "current": 0,
+        "total": 0,
+        "completed": false,
+        "error": true,
+        "download_url": "/download/08bf945f-6672-4c6b-918c-fe31573c0136/MANUAL_pt.docx",
+        "created_at": "2916fcf0-1408-11f1-881a-5e30bb87d9ce"
+    },
+    "036256b9-af58-41a9-a552-0b8944750d80": {
+        "id": "036256b9-af58-41a9-a552-0b8944750d80",
+        "original_filename": "Becoming_Gods_Family_Carmen_Joy_Imes_z-library.sk_1lib.sk_z-lib.sk.docx",
+        "status": "Erro: Processamento interrompido pelo servidor",
+        "percentage": 2,
+        "current": 17,
+        "total": 842,
+        "completed": false,
+        "error": true,
+        "download_url": "/download/036256b9-af58-41a9-a552-0b8944750d80/Becoming_Gods_Family_Carmen_Joy_Imes_z-library.sk_1lib.sk_z-lib.sk_pt.docx",
+        "created_at": "41816ca6-140a-11f1-90f9-5e30bb87d9ce"
+    }
+}

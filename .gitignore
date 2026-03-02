@@ -1,0 +1,16 @@
+# Ignore local environment artifacts
+.venv/
+__pycache__/
+*.pyc
+.env
+.DS_Store
+
+# Ignore application data folders (ephemeral or volume-mounted)
+uploads/
+translated/
+*.docx
+!test.docx
+
+# Ignore IDE settings
+.vscode/
+.idea/
