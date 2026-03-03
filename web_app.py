@@ -211,6 +211,6 @@ def download_file(task_id, filename):
     return jsonify({'error': 'Arquivo não encontrado'}), 404
 
 if __name__ == '__main__':
-    # Use 0.0.0.0 to make it accessible if needed, but localhost is fine for local dev
-    # Port 5000 is often used by AirPlay on macOS, using 5001 instead
-    app.run(debug=True, port=5001)
+    # Use 0.0.0.0 and PORT env variable to make it accessible in Docker/Coolify natively
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=True)

@@ -35,4 +35,4 @@ EXPOSE 5000
 # Using 1 worker and multiple threads because we store task state in-memory (global variable)
 # If we used Redis/DB for state, we could scale workers.
 # Timeout increased to 300s (5 min) for long translations
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "1", "--threads", "8", "--timeout", "300", "web_app:app"]
+CMD gunicorn --bind 0.0.0.0:${PORT:-5000} --workers 1 --threads 8 --timeout 300 web_app:app
