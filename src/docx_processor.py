@@ -263,12 +263,14 @@ class DocxProcessor:
 
         except Exception as e:
             print(f"Error processing paragraph: {e}")
-            # Fallback: just translate raw text and replace first run
+            # Fallback: just translate raw text and replace content
             try:
                 text = paragraph.text
                 translated = self.translator.translate_text(text)
+                # Clear all existing runs to avoid inheriting partial formatting (e.g. underline from first run)
                 for run in paragraph.runs:
                     run.text = ""
-                paragraph.runs[0].text = translated
+                # Add new run with default paragraph style
+                paragraph.add_run(translated)
             except:
                 pass
