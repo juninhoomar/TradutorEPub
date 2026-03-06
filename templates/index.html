@@ -234,13 +234,18 @@
 
                 if (task.completed) {
                     clearInterval(interval);
-                    statusText.textContent = 'Tradução Concluída!';
+                    statusText.textContent = 'Tradução Concluída! O download iniciará automaticamente...';
                     statusText.classList.add('text-success');
                     
                     downloadBtn.href = task.download_url;
                     downloadBtn.classList.remove('hidden');
                     newBtn.classList.remove('hidden');
                     btnUpload.classList.add('hidden'); // Hide upload button
+
+                    // Auto download
+                    setTimeout(() => {
+                        window.location.href = task.download_url;
+                    }, 1500);
                 } else if (task.error) {
                     clearInterval(interval);
                     statusText.textContent = 'Erro: ' + task.status;
