@@ -8,6 +8,7 @@ from werkzeug.utils import secure_filename
 from src.docx_processor import DocxProcessor
 from src.pdf_processor import PdfProcessor
 from src.task_manager import TaskManager
+from src.underline_remover import UnderlineRemover
 
 app = Flask(__name__)
 
@@ -122,6 +123,37 @@ def process_file_background(task_id, input_path, output_path):
             'error': True
         })
 
+def process_underline_removal_background(task_id, input_path, output_path):
+    try:
+        task_manager.update_task(task_id, {'status': 'Iniciando remoção de sublinhados...'})
+        print(f"[{task_id}] Iniciando remoção de sublinhados em {input_path}")
+        
+        processor = UnderlineRemover(input_path, output_path)
+        processor.process()
+        
+        print(f"[{task_id}] Processamento concluído. Salvando em {output_path}")
+        
+        # Verify file exists
+        if os.path.exists(output_path):
+            file_size = os.path.getsize(output_path)
+            print(f"[{task_id}] Arquivo salvo com sucesso. Tamanho: {file_size} bytes")
+            task_manager.update_task(task_id, {
+                'status': 'Concluído',
+                'percentage': 100,
+                'completed': True
+            })
+        else:
+            raise FileNotFoundError(f"Arquivo de saída não encontrado em {output_path}")
+
+    except Exception as e:
+        error_msg = str(e)
+        print(f"Error processing task {task_id}: {error_msg}")
+        traceback.print_exc()
+        task_manager.update_task(task_id, {
+            'status': f'Erro: {error_msg}',
+            'error': True
+        })
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -169,6 +201,59 @@ def upload_file():
         
         # Start background thread
         thread = threading.Thread(target=process_file_background, args=(task_id, input_path, output_path))
+        thread.start()
+        
+        return jsonify({'task_id': task_id})
+    
+    return jsonify({'error': 'Tipo de arquivo não permitido'}), 400
+
+@app.route('/upload_remove_underline', methods=['POST'])
+def upload_remove_underline():
+    if 'file' not in request.files:
+        return jsonify({'error': 'Nenhum arquivo enviado'}), 400
+    
+    file = request.files['file']
+    
+    if file.filename == '':
+        return jsonify({'error': 'Nenhum arquivo selecionado'}), 400
+        
+    if file and allowed_file(file.filename):
+        # We only support docx for this action
+        if not file.filename.lower().endswith('.docx'):
+             return jsonify({'error': 'Apenas arquivos .docx são suportados para esta ação'}), 400
+             
+        filename = secure_filename(file.filename)
+        file_id = str(uuid.uuid4())
+        
+        # Save input file
+        unique_input_filename = f"{file_id}_{filename}"
+        input_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_input_filename)
+        file.save(input_path)
+        
+        # Prepare output file
+        base_name = os.path.splitext(filename)[0]
+        output_filename_user = f"{base_name}_sem_sublinhado.docx"
+        unique_output_filename = f"{file_id}_{output_filename_user}"
+        output_path = os.path.join(app.config['TRANSLATED_FOLDER'], unique_output_filename)
+        
+        # Initialize task
+        task_id = file_id
+        task_data = {
+            'id': task_id,
+            'original_filename': filename,
+            'status': 'Aguardando',
+            'percentage': 0,
+            'current': 0,
+            'total': 0,
+            'completed': False,
+            'error': False,
+            'download_url': f"/download/{task_id}/{output_filename_user}",
+            'created_at': str(uuid.uuid1())
+        }
+        task_manager.add_task(task_id, task_data)
+        
+        # Start background thread
+        thread = threading.Thread(target=process_underline_removal_background, args=(task_id, input_path, output_path))
         thread.start()
         
         return jsonify({'task_id': task_id})
