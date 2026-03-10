@@ -40,6 +40,7 @@ class UnderlineRemover:
 
             # If it's not a hyperlink, remove the underline
             if not is_hyperlink:
-                # Remove underline formatting at the run level
-                if run.font.underline:
-                    run.font.underline = False
+                # Unconditionally force underline to False. 
+                # This adds <w:u w:val="none"/> to XML, which overrides any inherited underline.
+                # (Previously we checked `if run.font.underline:`, which skipped inherited underlines resolving to None)
+                run.font.underline = False
